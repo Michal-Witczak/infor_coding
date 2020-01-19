@@ -10,58 +10,42 @@ import json
 import argparse
 import boto3
 import datetime as dt
+import configparser
 import os
 import sys
 
-# hardcoded/default credentials and data
 REGION = 'us-east-2'
-# extract default.7z package and paste ID and KEY from default.txt file in corresponding variables below. Otherwise, use your own ID nad KEY.
-ID = '*******'
-KEY = '*******'
-AUTH = {'id': ID, 'key': KEY}
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), '.aws', 'aws.conf')
+
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
         
 
-def check_auth(user: str, password: str) -> dict:
-    """
-    Return user and password if provided, otherwise use default
-    """
-    if not user or not password:
-        auth = {'id': ID,
-                'key': KEY}
-    else: 
-        auth = {'id': user, 
-                'key': password}
-    
-    return auth
-
-
-def get_client(service_name='apigateway', auth=None, region_name=REGION) -> boto3.client:
+def get_client(aws_id: str, aws_key: str, region_name=REGION, service_name='apigateway') -> boto3.client:
     """
     Simple wrapper to get client from boto3
     """
-
-    if auth is None:
-        auth = AUTH
-
-    return boto3.client(service_name, aws_access_key_id=auth['id'], aws_secret_access_key=auth['key'], region_name=region_name)
+    
+    return boto3.client(service_name, aws_access_key_id=aws_id, aws_secret_access_key=aws_key, region_name=region_name)
 
 
-def get_region(region) -> str:
+def get_region(conf: dict) -> dict:
     """
     Check region (with validation) if provided, otherwise use default
     """
     
-    if region:
-        df = pd.DataFrame(regions())
+    if conf['region']:
+        df = pd.DataFrame(get_available_regions(conf))
         available_regions = list(df['RegionName'].unique())
         available_regions_str = "\n".join(list(df["RegionName"].unique()))
-        if region not in available_regions:
+        if conf['region'] not in available_regions:
             raise Exception(f'Invalid region name. Regions available:\n{available_regions_str}')
-            
-        return region
+     
     else:
-        return REGION
+        conf['region'] = REGION
+    
+    return conf
     
 
 def get_config() -> dict:
@@ -70,8 +54,7 @@ def get_config() -> dict:
     """
     
     parser = argparse.ArgumentParser(description='Script to gather audit AWS REST API data. If no argument is provided, defaults will be used.')
-    parser.add_argument('-u', '--username', type=str, nargs='?', help='AWS API id')
-    parser.add_argument('-p', '--password', type=str, nargs='?', help='AWS API key')
+    parser.add_argument('-p', '--profile', metavar='P', type=str, nargs='?', help='AWS API Profile from ~/.aws/aws.conf file')
     parser.add_argument('-r', '--region', metavar='us-east-2', type=str, nargs='?', help='AWS API Region')
     parser.add_argument('-m', '--methods', metavar='get', type=str, nargs='*', help='AWS API HTTP Methods', choices=['get', 'put', 'delete', 'post', 'options'])
     parser.add_argument('-o', '--output', metavar='json, csv, json-pretty', type=str, nargs='?', help='Script output', choices=['json', 'csv', 'json-pretty'])
@@ -79,24 +62,28 @@ def get_config() -> dict:
     args = parser.parse_args()
     
     conf = {
-        'id': args.username,
-        'key': args.password,
+        'profile': args.profile,
         'region': args.region,
         'methods': args.methods,
         'output': args.output
         }
+  
+    conf = get_profiles(conf)
+    
+    conf['output'] = conf['output'] if conf['output'] else 'csv'
+    conf = get_region(conf)
     
     return conf
 
 
-def regions():
+def get_available_regions(conf: dict):
     """
     Get all available regions
     """
+
+    ec2 = get_client(aws_id=conf['id'], aws_key=conf['key'], service_name='ec2')
     
-    client = get_client('ec2')
-    
-    regions = client.describe_regions()
+    regions = ec2.describe_regions()
     
     return regions['Regions']
 
@@ -193,7 +180,7 @@ def get_rest_apis_dataframe(client: boto3.client) -> pd.DataFrame:
     return df_rest_apis
     
 
-def get_api_resources_dataframe(client: boto3.client, rest_apis: list, config) -> pd.DataFrame:  
+def get_api_resources_dataframe(client: boto3.client, rest_apis: list, config: dict) -> pd.DataFrame:  
     """
     Get API Resources for csv output
     """
@@ -241,23 +228,31 @@ def get_api_resources_dataframe(client: boto3.client, rest_apis: list, config) -
             for method in desired_methods:
                 if method in methods:
                     indexes.append(idx)
-        
-        indexes = list(set(indexes))
-        
+                    break
+    
         df_resources = df_resources.reindex(indexes)
     
     return df_resources
     
 
-def get_data(auth: dict, config: dict):
+def get_data(config: dict):
     """
     Get data (main script logic)
     """
-    apigw = get_client(service_name='apigateway', auth=auth, region_name=config['region'])
     
-    file_name = f'{dt.datetime.now().strftime("%Y%m%d_%H%M%S")}_apigateway_report_{config["region"]}_{auth["id"]}'
+    print(f'''Getting REST API data for:
+          - profile: {'default' if not config["profile"] else config["profile"]}
+          - methods: {'ALL' if not config["methods"] else config["methods"]}
+          - region: {config["region"]}
+          - output: {config["output"]}''')
+
+    apigw = get_client(service_name='apigateway', aws_id=config['id'], aws_key=config['key'], region_name=config['region'])
+    
+    file_name = f'{dt.datetime.now().strftime("%Y%m%d_%H%M%S")}_apigateway_report_{config["region"]}'
     if config['methods']:
         file_name += f'_{"_".join(config["methods"])}'
+    if config['profile']:
+        file_name += f'_{config["profile"]}'
         
     if config['output'] == 'csv':
         df_rest_apis = get_rest_apis_dataframe(apigw)
@@ -282,11 +277,26 @@ def get_data(auth: dict, config: dict):
     print(f'Output file saved: {os.path.join(OUTPUT_DIR, file_name)}')
 
 
+def get_profiles(config: dict, conf_file=CONFIG_FILE) -> dict:
+    profiles = configparser.ConfigParser()
+    
+    profiles.read(conf_file)
+    
+    if config['profile']:
+        try:
+            profile = config['profile'].upper()
+            creds = profiles[profile]
+        except KeyError:
+            print(f'Invalid aws profile: {profile}. Please check configuration file')
+    else:
+        creds = profiles['DEFAULT']
+
+    config['id'] = creds['aws_access_key_id']
+    config['key'] = creds['aws_secret_access_key']
+    
+    return config
+
+
 if __name__ == '__main__':
-    CONFIG = get_config()
-    AUTH = check_auth(CONFIG.pop('id'), CONFIG.pop('key'))
-    CONFIG['output'] = CONFIG['output'] if CONFIG['output'] else 'csv'
-    CONFIG['region'] = get_region(CONFIG['region'])
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
-    get_data(auth=AUTH, config=CONFIG)
+    config = get_config()  
+    get_data(config=config)

@@ -4,14 +4,14 @@ Script to gather audit AWS REST API data. If no argument is provided, defaults w
 ## Usage
 
 ```
-aws_api_gateway_rest_apis.py [-h] [-u [USERNAME]] [-p [PASSWORD]] [-r [us-east-2]] [-m [get [get ...]]] [-o [json, csv, json-pretty]]
+aws_api_gateway_rest_apis.py [-h] [-p [P]] [-r [us-east-2]] [-m [get [get ...]]] [-o [json, csv, json-pretty]]
+
+Script to gather audit AWS REST API data. If no argument is provided, defaults will be used.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -u [USERNAME], --username [USERNAME]
-                        AWS API id
-  -p [PASSWORD], --password [PASSWORD]
-                        AWS API key
+  -p [P], --profile [P]
+                        AWS API Profile from ~/.aws/aws.conf file
   -r [us-east-2], --region [us-east-2]
                         AWS API Region
   -m [get [get ...]], --methods [get [get ...]]
