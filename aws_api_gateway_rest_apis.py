@@ -289,6 +289,7 @@ def get_profiles(config: dict, conf_file=CONFIG_FILE) -> dict:
             creds = profiles[profile]
         except KeyError:
             print(f'Invalid aws profile: {profile}. Please check configuration file')
+            sys.exit(1)
     else:
         creds = profiles['DEFAULT']
 
