@@ -260,6 +260,7 @@ def get_data(config: dict):
         df = df_rest_apis.merge(df_resources, how='outer', left_on='id', right_on='RestApiId')
         file_name += '.csv'
         df.to_csv(os.path.join(OUTPUT_DIR, file_name), sep='|', index=False)
+
     if 'json' in config['output']:
         rest_apis = get_rest_apis(apigw)
         api_resources = get_api_resources(apigw, rest_apis, config)
