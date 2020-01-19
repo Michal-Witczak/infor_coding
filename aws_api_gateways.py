@@ -13,15 +13,15 @@ import datetime as dt
 import os
 import sys
 
+# hardcoded/default credentials and data
 REGION = 'us-east-2'
-# hardcoded credentials (I'm bad...)
 ID = 'AKIAIJBFJOORACQILVDQ'
 KEY = '9hEEtcBxV3CifrOCfRUEqV5z4yKA2pzEIaA6CaeB'
 AUTH = {'id': ID, 'key': KEY}
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
         
 
-def check_auth(user: str, password: str) -> tuple:
+def check_auth(user: str, password: str) -> dict:
     """
     Return user and password if provided, otherwise use default
 
@@ -66,13 +66,12 @@ def get_config() -> dict:
     Parse commandline arguments and return config dictionary
     """
     
-    parser = argparse.ArgumentParser(description='Jestem zajebisty')
-    parser.add_argument('-u', '--username', metavar='U', type=str, nargs='?', help='AWS API id')
-    parser.add_argument('-p', '--password', metavar='P', type=str, nargs='?', help='AWS API key')
-    parser.add_argument('-r', '--region', metavar='R', type=str, nargs='?', help='AWS API Region')
-    parser.add_argument('-m', '--methods', metavar='M', type=str, nargs='*', help='AWS API HTTP Methods', choices=['get', 'put', 'delete', 'post', 'options'])
-    parser.add_argument('-o', '--output', metavar='O', type=str, nargs='?', help='Script output', choices=['json', 'csv', 'json-pretty'])
-    
+    parser = argparse.ArgumentParser(description='Script to gather audit AWS REST API data. If no argument is provided, defaults will be used.')
+    parser.add_argument('-u', '--username', type=str, nargs='?', help='AWS API id')
+    parser.add_argument('-p', '--password', type=str, nargs='?', help='AWS API key')
+    parser.add_argument('-r', '--region', metavar='us-east-2', type=str, nargs='?', help='AWS API Region')
+    parser.add_argument('-m', '--methods', metavar='get', type=str, nargs='*', help='AWS API HTTP Methods', choices=['get', 'put', 'delete', 'post', 'options'])
+    parser.add_argument('-o', '--output', metavar='json, csv, json-pretty', type=str, nargs='?', help='Script output', choices=['json', 'csv', 'json-pretty'])
 
     args = parser.parse_args()
     
@@ -85,6 +84,7 @@ def get_config() -> dict:
         }
     
     return conf
+
 
 def regions():
     """
@@ -287,5 +287,3 @@ if __name__ == '__main__':
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
     get_data(auth=AUTH, config=CONFIG)
-    
-    
