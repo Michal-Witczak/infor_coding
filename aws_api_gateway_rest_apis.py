@@ -15,8 +15,9 @@ import sys
 
 # hardcoded/default credentials and data
 REGION = 'us-east-2'
-ID = 'AKIAIJBFJOORACQILVDQ'
-KEY = '9hEEtcBxV3CifrOCfRUEqV5z4yKA2pzEIaA6CaeB'
+# extract default.7z package and paste ID and KEY from default.txt file in corresponding variables below. Otherwise, use your own ID nad KEY.
+ID = '*******'
+KEY = '*******'
 AUTH = {'id': ID, 'key': KEY}
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
         
@@ -24,7 +25,6 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
 def check_auth(user: str, password: str) -> dict:
     """
     Return user and password if provided, otherwise use default
-
     """
     if not user or not password:
         auth = {'id': ID,
@@ -36,11 +36,14 @@ def check_auth(user: str, password: str) -> dict:
     return auth
 
 
-def get_client(service_name='apigateway', auth=AUTH, region_name=REGION) -> boto3.client:
+def get_client(service_name='apigateway', auth=None, region_name=REGION) -> boto3.client:
     """
     Simple wrapper to get client from boto3
     """
-    
+
+    if auth is None:
+        auth = AUTH
+
     return boto3.client(service_name, aws_access_key_id=auth['id'], aws_secret_access_key=auth['key'], region_name=region_name)
 
 
