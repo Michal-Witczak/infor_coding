@@ -2,6 +2,7 @@
 Script to gather audit AWS REST API data. If no argument is provided, defaults will be used.
 
 ## Usage
+
 ```aws_api_gateway_rest_apis.py [-h] [-u [USERNAME]] [-p [PASSWORD]] [-r [us-east-2]] [-m [get [get ...]]] [-o [json, csv, json-pretty]]
 
 optional arguments:
