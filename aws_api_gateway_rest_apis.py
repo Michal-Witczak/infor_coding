@@ -20,7 +20,10 @@ CONFIG_FILE = os.path.join(os.path.dirname(__file__), '.aws', 'aws.conf')
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
-        
+
+if not os.path.exists(CONFIG_FILE):
+    raise Exception(f"No config file found in {CONFIG_FILE}")
+
 
 def get_client(aws_id: str, aws_key: str, region_name=REGION, service_name='apigateway') -> boto3.client:
     """
